@@ -21,6 +21,7 @@ uniform float transform_2;
 uniform float ambient;
 uniform float camera_amp;
 uniform float camera_speed;
+uniform float audioSensitivity;
 uniform int numAudio;
 uniform int numPoints;
 
@@ -333,6 +334,8 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
     vec3 relPos = curPos - point;
     cassini *= dot(relPos, relPos);
   }
+
+  float audioSensitivity = 6.;
   
   if (fractal_type <= SPONGE) {
     if (hit) {
@@ -340,7 +343,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
       col.rgb = hsv2rgb (col.rgb);
       float dist = 10;
       float audio = getAudio(cassini, dist);
-      col.rgb *= pow(audio, 2.);
+      col.rgb *= pow(audio, audioSensitivity);
     }
     else {
       col.rgb = vec3 (0.8 + (length (minDistToScenePos) / 8.0), 1.0, 0.8);
@@ -357,7 +360,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
       col.rgb = hsv2rgb (col.rgb);
       float dist = 1;
       float audio = getAudio(cassini, dist);
-      col.rgb *= pow(audio, 2.);
+      col.rgb *= pow(audio, audioSensitivity);
     }
     else {
       col.rgb = vec3 (0.8 + (length (minDistToScenePos) / 0.5), 1.0, 0.8);
@@ -375,7 +378,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
       col.rgb = hsv2rgb (col.rgb);
       float dist = 10;
       float audio = getAudio(cassini, dist);
-      col.rgb *= pow(audio, 2.);
+      col.rgb *= pow(audio, audioSensitivity);
     }
 
     col.rgb /= steps * 0.08; // Ambeint occlusion

@@ -5,13 +5,14 @@ void ofApp::setup(){
 
 	lowSmoothing = 0.4;
 	highSmoothing = 0.8;
-	volume = 5.0;
+	volume = 1.0;
 
 	sampleRate = 48000;
     bufferSize = 1024;
     channels = 2;
     
     audioAnalyzer.setup(sampleRate, bufferSize, channels);
+	bpmDetector.setup(channels, sampleRate, 64);
 
 	ofSoundStreamSettings settings;
 
@@ -27,15 +28,15 @@ void ofApp::setup(){
 	// settings.api = ofSoundDevice::Api::PULSE;
 
 	// or by name
-	// auto devices = soundStream.getDeviceList(ofSoundDevice::Api::ALSA);
-	// if(!devices.empty()){
-	// 	settings.setInDevice(devices[0]);
-	// }
-
-	auto devices = soundStream.getDeviceList();
-	if (!devices.empty()) {
-		settings.setInDevice(devices[1]);
+	auto devices = soundStream.getDeviceList(ofSoundDevice::Api::ALSA);
+	if(!devices.empty()){
+		settings.setInDevice(devices[0]);
 	}
+
+	// auto devices = soundStream.getDeviceList();
+	// if (!devices.empty()) {
+	// 	settings.setInDevice(devices[1]);
+	// }
 
 	settings.setInListener(this);
 	settings.sampleRate = sampleRate;
@@ -147,15 +148,32 @@ void ofApp::setup(){
 	midiIn.addListener(this);
 
 	// load images
-	maskImage.load("mask.png");
+	maskImage.load("hyperportals_mask.png");
 	maskImage.resize(ofGetWidth(), ofGetHeight());
 
-	eyeImage1.load("eye1.jpeg");
-	eyeImage1.resize(ofGetWidth(), ofGetHeight());
-	eyeImage2.load("eye2.jpeg");
-	eyeImage2.resize(ofGetWidth(), ofGetHeight());
-	eyeImage3.load("eye3.jpeg");
-	eyeImage3.resize(ofGetWidth(), ofGetHeight());
+	artificerImage.load("artitficer-title.png");
+	artificerImage.resize(ofGetWidth(), ofGetHeight());
+
+	eyePlayer.load("eyeMovement.mkv");
+	eyePlayer.setLoopState(OF_LOOP_NORMAL);
+    eyePlayer.setVolume(0);
+    eyePlayer.play();
+
+	eyeTexture.allocate(eyePlayer.getWidth(), eyePlayer.getHeight(), GL_RGBA16);
+
+	// text
+	
+	ofBuffer buffer = ofBufferFromFile("fungi_from_yuggoth.txt");
+	for (auto line : buffer.getLines()){
+		textLines.push_back(line);
+	}
+
+	for (int i = 0; i < textLines.size(); i++) {
+		textLines[i] = ofToUpper(textLines[i]);
+	}
+
+	textStartPos = -9999999;
+	bToggleText = true;
 }
 
 //--------------------------------------------------------------
@@ -194,6 +212,8 @@ void ofApp::update(){
 		compute.setUniform1i("numAudio", audioVector.size());
 		compute.setUniform1i("numPoints", pointsVector.size());
 		compute.setUniform1f("dist", dist);
+		compute.setUniform1f("weirdFactor1", weirdFactor1);
+		compute.setUniform1f("weirdFactor2", weirdFactor2);
 
 		// since each work group has a local_size of 1024 (this is defined in the shader)
 		// we only have to issue 1 / 1024 workgroups to cover the full workload.
@@ -211,6 +231,9 @@ void ofApp::update(){
 
 	if (bLoadPostShader) {
 		post_shader.load("generic.vert", "post.frag");
+		fractal_shader.load("generic.vert", "fractals.frag");
+		compute.setupShaderFromFile(GL_COMPUTE_SHADER,"compute_attractors.glsl");
+		compute.linkProgram();
 		bLoadPostShader = false;
 	}
 }
@@ -222,12 +245,8 @@ void ofApp::draw(){
 	vector<float> melBands = audioAnalyzer.getValues(MEL_BANDS, 0, lowSmoothing);
 	bool isOnset = audioAnalyzer.getOnsetValue(0);
 
-	float thisDist = dist;
-	if (isOnset) {
-		thisDist = dist * 0.999;
-	} else {
-		thisDist = dist;
-	}
+	float bpm = bpmDetector.getBPM();
+	float bps = bpm / 60.0;
 
 	fbo1.begin();
 	ofClear(0, 0, 0, 0);
@@ -239,22 +258,26 @@ void ofApp::draw(){
 		fractal_shader.setUniform1f("time", ofGetElapsedTimef());
 		fractal_shader.setUniform1i("fractal_type", artifactType);
 		fractal_shader.setUniform1f("scale", 1.0);
-		fractal_shader.setUniform1f("transform_1", 0.0);
-		fractal_shader.setUniform1f("transform_2", 0.0);
-		fractal_shader.setUniform1f("ambient", 0.0);
-		fractal_shader.setUniform1f("camera_amp", 0.0);
-		fractal_shader.setUniform1f("camera_speed", 0.1);
+		fractal_shader.setUniform1f("transform_1", weirdFactor1);
+		fractal_shader.setUniform1f("transform_2", weirdFactor2);
+		fractal_shader.setUniform1f("ambient", melBands[0]);
+		fractal_shader.setUniform1f("camera_amp", cameraDist);
+		fractal_shader.setUniform1f("camera_speed", cameraRotateSpeed);
 		fractal_shader.setUniform1i("numAudio", audioVector.size());
 		fractal_shader.setUniform1i("numPoints", pointsVector.size());
 		ofSetColor(255);
 		ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
 		fractal_shader.end();
 		
-	} else if (artifactType >= 4) {
+	} else if ((artifactType >= 4) && (artifactType <= 11)) {
+		float thisDist = dist;
+		thisDist += (cameraDist - 0.5) * 2 * 0.1 * dist;
+
 		theta += 0.01;
 		phi += 0.005;
 		if (theta > 2 * PI) theta -= 2 * PI;
 		if (phi > 2 * PI) phi -= 2 * PI;
+
 		camera.setPosition(glm::vec3(thisDist * sin(theta) * cos(phi), thisDist * sin(theta) * sin(phi), thisDist * cos(theta)));
 		camera.lookAt(glm::vec3(0., 0., 0.));
 
@@ -276,6 +299,12 @@ void ofApp::draw(){
 
 	ofTexture & tex = fbo1.getTexture();
 
+	eyePlayer.update();
+    if(eyePlayer.isFrameNew()){
+        ofPixels & pixels = eyePlayer.getPixels();
+        eyeTexture.loadData(pixels);
+	}
+
 	fbo2.begin();
 	ofClear(0, 0, 0, 0);
 	post_shader.begin();
@@ -284,24 +313,83 @@ void ofApp::draw(){
 	post_shader.setUniformTexture("last", last.getTexture(), 0);
 	post_shader.setUniformTexture("tex", tex, 1);
 	post_shader.setUniformTexture("mask", maskImage.getTexture(), 2);
-	post_shader.setUniformTexture("eye1", eyeImage1.getTexture(), 3);
-	post_shader.setUniformTexture("eye2", eyeImage2.getTexture(), 4);
-	post_shader.setUniformTexture("eye3", eyeImage3.getTexture(), 5);
+	post_shader.setUniformTexture("artificer", artificerImage.getTexture(), 3);
+	post_shader.setUniformTexture("eye", eyeTexture, 4);
+	post_shader.setUniform1f("bps", bps);
 	post_shader.setUniform1f("low", melBands[0]);
 	post_shader.setUniform1f("high", melBands[melBands.size() - 1]);
+	post_shader.setUniform1i("postType", postType);
+	post_shader.setUniform1f("postVar", postVar);
 	ofSetColor(255);
 	ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
 	post_shader.end();
 	fbo2.end();
-	
+
 	last.begin();
 	ofClear(0, 0, 0, 0);
 	fbo2.draw(0, 0, ofGetWidth(), ofGetHeight());
 	last.end();
 	last.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	// fbo2.draw(0, 0, ofGetWidth(), ofGetHeight());
+	if (bToggleText) {
+		int lineSep, lineSpeed;
+		if (textType < 0.5) {
+			lineSep = 20;
+			lineSpeed = 2;
+		} else {
+			lineSep = 400;
+			lineSpeed = 2;
+		}
+
+		if (int(textStartPos) <= int(-1 * (textLines.size() * lineSep))) {
+			textType = ofRandom(1.);
+			if (textType < 0.5) {
+				textStartPos = ofGetHeight();
+				textPos = ofRandom(0, ofGetWidth());
+			} else {
+				textStartPos = ofGetWidth();
+				textPos = ofRandom(0, ofGetHeight());
+			}
+
+			for (int i = 0; i < textLines.size(); i++) {
+				if (ofRandom(1) > 0.7) {
+					textHighlight.push_back(true);
+				} else {
+					textHighlight.push_back(false);
+				}
+				textColors.push_back(ofColor(ofRandom(255), ofRandom(255), ofRandom(255)));
+			}
+		}
+
+		int y = textStartPos;
+		for (int i = 0; i < textLines.size(); i++) {
+			string line = textLines[i];
+			bool highlight = textHighlight[i];
+			if (highlight) {
+				ofColor backgroundColour = textColors[i];
+				if (textType < 0.5) {
+					ofDrawBitmapStringHighlight(line, textPos, y, backgroundColour);
+				} else {
+					ofDrawBitmapStringHighlight(line, y, textPos, backgroundColour);
+				}
+			} else {
+				if (textType < 0.5) {
+					ofDrawBitmapString(line, textPos, y);
+				} else {
+					ofDrawBitmapString(line, y, textPos);
+				}
+			}
+			y += lineSep;
+		}
+
+		textStartPos -= lineSpeed;
+		if (isOnset) {
+			textStartPos -= lineSpeed * 20;
+		}
+	}	
 }
+
+
 
 void ofApp::setAttractorParameters() {
 	if (attractor_type == 0) {
@@ -375,7 +463,7 @@ void ofApp::newMidiMessage(ofxMidiMessage& message) {
 			} else if (message.control == 6) {
 				cameraDist = ofMap(message.value, 0, 127, 0., 1.);
 			} else if (message.control == 52) {
-				
+				postVar = ofMap(message.value, 0, 127, 0., 1.);
 			}
 		}
 	}
@@ -384,6 +472,7 @@ void ofApp::newMidiMessage(ofxMidiMessage& message) {
 void ofApp::audioIn(ofSoundBuffer & buffer){
 	buffer *= volume;
 	audioAnalyzer.analyze(buffer);
+	bpmDetector.processFrame(buffer.getBuffer().data(), buffer.getNumFrames(), buffer.getNumChannels());
 }
 
 void ofApp::keyPressed(int key) {
@@ -393,11 +482,24 @@ void ofApp::keyPressed(int key) {
 
 void ofApp::changeArtifactType(int type) {
 
-	artifactType = type;
+	if (type <= 11) {
+		artifactType = type;
+	}
+	
 	if ((artifactType >= 4) && (artifactType <= 11)) {
 		attractor_type = artifactType - 4;
 		bResetAttractors = true;
-	} else if (artifactType == 24) {
+	}
+	
+	if ((artifactType > 11) && (artifactType < 23)) {
+		postType = type - 12;
+	}
+
+	if (type == 23) {
+		bToggleText = !bToggleText;
+	}
+
+	if (type == 24) {
 		bLoadPostShader = true;
 	}
 }

@@ -1,0 +1,3 @@
+ofxAudioAnalyzer
+ofxBPMDetector
+ofxMidi

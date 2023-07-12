@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "ofBufferObject.h"
 #include "ofxAudioAnalyzer.h"
+#include "ofxBPMDetector.h"
 #include "ofxMidi.h"
 
 class ofApp : public ofBaseApp, public ofxMidiListener{
@@ -19,13 +20,18 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		bool bLoadPostShader;
 		ofShader post_shader;
 		ofImage maskImage;
-		ofImage eyeImage1;
-		ofImage eyeImage2;
-		ofImage eyeImage3;
+		ofImage artificerImage;
+		ofVideoPlayer eyePlayer;
+		ofTexture eyeTexture;
 
 		ofShader fractal_shader;
 		ofFbo fbo1, fbo2;
 		ofFbo last;
+
+		int postType;
+		float postVar;
+
+		bool bToggleText;
 
 		int artifactType;
 		float weirdFactor1;
@@ -72,6 +78,7 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		bool bResetAttractors;
 
 		ofxAudioAnalyzer audioAnalyzer;
+		ofxBPMDetector bpmDetector;
 		ofSoundStream soundStream;
 		ofxMidiIn midiIn;
 
@@ -90,4 +97,11 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 
 		float lowSmoothing;
 		float highSmoothing;
+
+		vector<string> textLines;
+		vector<ofColor> textColors;
+		vector<bool> textHighlight;
+		int textStartPos;
+		float textType;
+		float textPos;
 };

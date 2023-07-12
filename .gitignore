@@ -1,0 +1,7 @@
+*.so
+*.qbs
+*.a
+.vscode
+obj
+*.code-workspace
+videos

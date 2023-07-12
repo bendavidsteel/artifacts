@@ -51,6 +51,8 @@ uniform int num_vertex;
 uniform int numAudio;
 uniform int numPoints;
 uniform float dist;
+uniform float weirdFactor1;
+uniform float weirdFactor2;
 
 // A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
 uint hash( uint x ) {
@@ -90,6 +92,10 @@ vec3 lorenz(vec3 pos) {
 	float sigma = 10.;
 	float rho = 28.;
 	float beta = 8. / 3.;
+
+	sigma *= 1 + weirdFactor1;
+	rho *= 1 + weirdFactor2;
+
 	float dx = sigma * (pos.y - pos.x);
 	float dy = pos.x * (rho - pos.z) - pos.y;
 	float dz = pos.x * pos.y - beta * pos.z;
@@ -100,6 +106,10 @@ vec3 rossler(vec3 pos) {
 	float a = 0.2;
 	float b = 0.2;
 	float c = 5.7;
+
+	a *= 1 + weirdFactor1;
+	b *= 1 + weirdFactor2;
+
 	float dx = -pos.y - pos.z;
 	float dy = pos.x + a * pos.y;
 	float dz = b + pos.z * (pos.x - c);
@@ -113,6 +123,10 @@ vec3 aizawa(vec3 pos) {
 	float d = 3.5;
 	float e = 0.25;
 	float f = 0.1;
+
+	a *= 1 + weirdFactor1;
+	b *= 1 + weirdFactor2;
+
 	float dx = (pos.z - b) * pos.x - d * pos.y;
 	float dy = d * pos.x + (pos.z - b) * pos.y;
 	float dz = c + a * pos.z - (pos.z * pos.z * pos.z) / 3. - (pos.x * pos.x + pos.y * pos.y) * (1. + e * pos.z) + f * pos.z * pos.x * pos.x * pos.x;
@@ -123,6 +137,10 @@ vec3 chen(vec3 pos) {
 	float a = 5.;
 	float b = -10.;
 	float c = -0.38;
+
+	a *= 1 + weirdFactor1;
+	b *= 1 + weirdFactor2;
+
 	float dx = a * pos.x - pos.y * pos.z;
 	float dy = b * pos.y + pos.x * pos.z;
 	float dz = c * pos.z + (pos.x * pos.y / 3.);
@@ -135,6 +153,10 @@ vec3 dadras(vec3 pos) {
 	float c = 1.7;
 	float d = 2.;
 	float e = 9.;
+
+	a *= 1 + weirdFactor1;
+	b *= 1 + weirdFactor2;
+
 	float dx = pos.y - a * pos.x + b * pos.y * pos.z;
 	float dy = c * pos.y - pos.x * pos.z + pos.z;
 	float dz = d * pos.x * pos.y - e * pos.z;
@@ -146,6 +168,10 @@ vec3 lorenz83(vec3 pos) {
 	float b = 7.91;
 	float f = 4.83;
 	float g = 4.66;
+
+	a *= 1 + weirdFactor1;
+	b *= 1 + weirdFactor2;
+
 	float dx = -a * pos.x + pos.y * pos.y - pos.z * pos.z + a * f;
 	float dy = -pos.y + pos.x * pos.y - b * pos.x * pos.z + g;
 	float dz = -pos.z + b * pos.x * pos.y + pos.x * pos.z;
@@ -253,8 +279,10 @@ void main(){
 	colour += vec3(0., 0.5 * norm_speed, 1. * norm_speed);
 	// colour += vec3(0., 1. * audio, 0.5 * audio);
 	
+	float audioSensitivity = 1.;
+
 	p[gl_GlobalInvocationID.x].color.rgb = colour;
-	p[gl_GlobalInvocationID.x].color.a = 0.1 * pow(audio, 2);
+	p[gl_GlobalInvocationID.x].color.a = 0.1 * pow(audio, audioSensitivity);
 
 	if (particleIdx == 0) {
 		vec3 pos1 = line12[particleIdx].pos.xyz;
@@ -286,7 +314,7 @@ void main(){
 	int audioSpeed = 3;
 	if (particleIdx < audioSpeed) {
 		float bass = allAudio[0].value.x;
-		bass = pow(bass, 2.);
+		bass = pow(bass, audioSensitivity);
 		line11[particleIdx].color.rgb = vec3(0.1, 0.1, 0.8);
 		line11[particleIdx].color.a = bass;
 
