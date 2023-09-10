@@ -6,6 +6,10 @@
 #include "ofxBPMDetector.h"
 #include "ofxMidi.h"
 
+#include "attractors.h"
+#include "scrolls.h"
+#include "fractals.h"
+
 class ofApp : public ofBaseApp, public ofxMidiListener{
 
 	public:
@@ -17,6 +21,13 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		void audioIn(ofSoundBuffer & buffer);
 		void newMidiMessage(ofxMidiMessage& eventArgs);
 
+		void changeArtifactType(int type);
+		void reloadShaders();
+
+		Attractors attractors;
+		Scrolls scrolls;
+		Fractals fractals;
+
 		bool bLoadPostShader;
 		ofShader post_shader;
 		ofImage maskImage;
@@ -24,58 +35,23 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		ofVideoPlayer eyePlayer;
 		ofTexture eyeTexture;
 
-		ofShader fractal_shader;
 		ofFbo fbo1, fbo2;
 		ofFbo last;
+
+		ofFbo fboAttractors;
+		ofFbo fboScrolls;
+		ofFbo fboFractals;
 
 		int postType;
 		float postVar;
 
-		bool bToggleText;
-
 		int artifactType;
 		float weirdFactor1;
 		float weirdFactor2;
-		float cameraRotateSpeed;
-		float cameraDist;
-
-		void changeArtifactType(int type);
-		void resetAttractors();
-		void setAttractorParameters();
-		void loadParticles();
-		void spawnParticles();
-
-		struct Particle{
-			glm::vec4 pos;
-			glm::vec4 color;
-		};
-
+	
 		struct Component{
 			glm::vec4 value;
 		};
-
-		vector<Particle> particles;
-		vector<Particle> line1;
-		vector<Particle> line2;
-
-		ofShader compute;
-		ofBufferObject particlesBuffer, particlesBuffer2;
-		ofBufferObject line1Buffer, line1Buffer2;
-		ofBufferObject line2Buffer, line2Buffer2;
-		ofVbo vbo, vboLine1, vboLine2;
-
-		ofCamera camera;
-		float theta;
-		float phi;
-		float dist;
-
-		int attractor_type;
-		float step_size;
-		int numVertex;
-		int numParticles;
-		float spawnRadius;
-
-		bool bResetAttractors;
 
 		ofxAudioAnalyzer audioAnalyzer;
 		ofxBPMDetector bpmDetector;
@@ -90,6 +66,9 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		vector<Component> audioVector;
 		vector<Component> pointsVector;
 
+		float cameraRotateSpeed;
+		float cameraDist;
+
 		int sampleRate;
 		int bufferSize;
 		int channels;
@@ -98,10 +77,7 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		float lowSmoothing;
 		float highSmoothing;
 
-		vector<string> textLines;
-		vector<ofColor> textColors;
-		vector<bool> textHighlight;
-		int textStartPos;
-		float textType;
-		float textPos;
+		// video and optical flow
+		ofVideoGrabber vidGrabber;
+		ofTexture vidTexture;
 };

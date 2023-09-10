@@ -6,11 +6,14 @@ uniform ivec2 resolution;
 uniform float time;
 
 uniform sampler2DRect last;
-uniform sampler2DRect tex;
 
 uniform sampler2DRect mask;
 uniform sampler2DRect eye;
 uniform sampler2DRect artificer;
+
+uniform sampler2DRect attractors;
+uniform sampler2DRect fractals;
+uniform sampler2DRect scrolls;
 
 uniform float low;
 uniform float high;
@@ -98,12 +101,12 @@ void main(){
     vec2 coord = gl_FragCoord.xy;
     vec2 uv = coord / vec2(resolution);
 
-    vec2 centre = vec2(0.5, 0.5);
-    vec2 from_centre = uv - centre;
+    // vec2 centre = vec2(0.5, 0.5);
+    // vec2 from_centre = uv - centre;
     // from_centre *= 0.2;
 
-    float theta = atan(from_centre.y, from_centre.x);
-    float r = length(from_centre);
+    // float theta = atan(from_centre.y, from_centre.x);
+    // float r = length(from_centre);
     // float refl_theta = PI * 0.25;
     // if (theta > refl_theta) {
     //     theta = refl_theta;;
@@ -116,7 +119,7 @@ void main(){
     //     from_centre = from_centre * refl_mat(PI * 0.);
     // }
 
-    theta += 0.1 * random(time);
+    // theta += 0.1 * random(time);
 
     // if ((from_centre * refl_mat(PI * 0.5)).x > 0.) {
     //     from_centre = from_centre * refl_mat(PI * 0.5);
@@ -126,24 +129,24 @@ void main(){
     //     from_centre = from_centre * refl_mat(PI * 0.25);
     // }
 
-    theta = atan(from_centre.y, from_centre.x);
-    r = length(from_centre);
-    r *= 1. + pow(low / 8., 3.);
+    // theta = atan(from_centre.y, from_centre.x);
+    // r = length(from_centre);
+    // r *= 1. + pow(low / 8., 3.);
 
-    // theta += 0.5 * random(r);
-    // r += 0.01 * random(theta);
+    // // theta += 0.5 * random(r);
+    // // r += 0.01 * random(theta);
 
-    from_centre = vec2(cos(theta), sin(theta)) * r;
+    // from_centre = vec2(cos(theta), sin(theta)) * r;
 
-    uv = centre + from_centre;
+    // uv = centre + from_centre;
 
     // uv.y += 0.001 * pow(low + 1, 3.) * random(uv.x);
     // uv.x += 0.001 * pow(low + 1, 3.) * random(uv.y);
 
-    float scale = 1.2;
-    uv.x = (uv.x * scale) - (1 * floor(uv.x * scale/1));
-    uv.y = (uv.y * scale) - (1 * floor(uv.y * scale/1));
-    coord = uv * vec2(resolution);
+    // float scale = 1.2;
+    // uv.x = (uv.x * scale) - (1 * floor(uv.x * scale/1));
+    // uv.y = (uv.y * scale) - (1 * floor(uv.y * scale/1));
+    // coord = uv * vec2(resolution);
 
     // float left = 0.;
     // float right = 1.;
@@ -156,68 +159,77 @@ void main(){
 
     // vec2 mapped_coord = mapped_uv.xy * resolution.xy;
     
-    vec3 colour = vec3(0., 0., 0.);
-    colour = texture(tex, coord).rgb;
+    // vec3 colour = vec3(0., 0., 0.);
+    // colour = texture(tex, coord).rgb;
 
-    vec2 from_centre2 = refl_mat(PI * 0.25) * from_centre;
-    vec2 uv2 = centre + from_centre2;
-    vec2 coord2 = uv2 * vec2(resolution);
-    vec3 colour2 = texture(tex, coord2).rgb;
-    colour = mix(colour, colour2, 0.5);
+    // vec2 from_centre2 = refl_mat(PI * 0.25) * from_centre;
+    // vec2 uv2 = centre + from_centre2;
+    // vec2 coord2 = uv2 * vec2(resolution);
+    // vec3 colour2 = texture(tex, coord2).rgb;
+    // colour = mix(colour, colour2, 0.5);
 
-    int feedback = 1;
-    if (feedback == 1) {
-        vec2 centre = vec2(0.5, 0.5);
-        vec2 from_centre = uv - centre;
-        float r = length(from_centre);
-        float theta = atan(from_centre.y, from_centre.x);
+    // int feedback = 1;
+    // if (feedback == 1) {
+    //     vec2 centre = vec2(0.5, 0.5);
+    //     vec2 from_centre = uv - centre;
+    //     float r = length(from_centre);
+    //     float theta = atan(from_centre.y, from_centre.x);
 
-        // r *= 1. + 0.5 * pow(low, 2.);
-        // theta += 0.01 * pow(high, 2.);
+    //     // r *= 1. + 0.5 * pow(low, 2.);
+    //     // theta += 0.01 * pow(high, 2.);
 
-        vec2 scaled_uv = centre + vec2(cos(theta), sin(theta)) * r;
+    //     vec2 scaled_uv = centre + vec2(cos(theta), sin(theta)) * r;
 
-        // scaled_uv *= pow(low, 2.);
+    //     // scaled_uv *= pow(low, 2.);
 
-        vec3 scaled_colour = texture(last, scaled_uv * vec2(resolution)).rgb;
-        scaled_colour = get_colour_rotation(int(time * 0.5)) * scaled_colour;
-        // colour += 0.3 * scaled_colour * get_colour_rotation(int(3 + 3 * sin(bps * time)));
-    }
+    //     vec3 scaled_colour = texture(last, scaled_uv * vec2(resolution)).rgb;
+    //     scaled_colour = get_colour_rotation(int(time * 0.5)) * scaled_colour;
+    //     // colour += 0.3 * scaled_colour * get_colour_rotation(int(3 + 3 * sin(bps * time)));
+    // }
 
     // colour = 1 - colour;
     // colour = get_colour_rotation(int(2 * time * bps)) * colour;
 
     // eyes
-    vec3 eye_colour = texture(eye, coord).rgb;
-    if (length(colour) > 0.1) {
-        colour = mix(colour, eye_colour * (1.2 + length(colour)), 0.1);
-        colour = eye_colour * 2 * length(colour);
-    }
+    // vec3 eye_colour = texture(eye, coord).rgb;
+    // if (length(colour) > 0.1) {
+    //     colour = mix(colour, eye_colour * (1.2 + length(colour)), 0.1);
+    //     colour = eye_colour * 2 * length(colour);
+    // }
 
     // artificer
-    vec4 artificer_colour = texture(artificer, coord).rgba;
-    artificer_colour += 0.2 * texture(artificer, coord + ivec2(0, 1)).rgba;
-    artificer_colour += 0.2 * texture(artificer, coord + ivec2(1, 0)).rgba;
-    artificer_colour += 0.2 * texture(artificer, coord + ivec2(0, -1)).rgba;
-    artificer_colour += 0.2 * texture(artificer, coord + ivec2(-1, 0)).rgba;
-    if (artificer_colour.a > 0.1) {
-        colour = mix(colour, artificer_colour.rgb, 0.4);
-        colour *= artificer_colour.rgb;
-    }
+    // vec4 artificer_colour = texture(artificer, coord).rgba;
+    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(0, 1)).rgba;
+    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(1, 0)).rgba;
+    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(0, -1)).rgba;
+    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(-1, 0)).rgba;
+    // if (artificer_colour.a > 0.1) {
+    //     // colour = mix(colour, artificer_colour.rgb, 0.4);
+    //     colour *= artificer_colour.rgb;
+    // }
 
-    colour.r += 0.2 + 0.2 * cos(4 * time * bps);
-    float colour_b = 0;
+    // colour.r += 0.2 + 0.2 * cos(4 * time * bps);
+    // float colour_b = 0;
 
-    colour += 0.2 * vec3(low, high, 0.) * get_colour_rotation(int(cos(time * bps)));
+    // colour += 0.2 * vec3(low, high, 0.) * get_colour_rotation(int(cos(time * bps)));
 
-    float real_low = low/-2.5;
-    if (colour.r + colour.g + colour.b + real_low*3 > 3.0) {
-        colour.b = 0.5;
-        colour.g *=2;
-    }
+    // float real_low = low/-2.5;
+    // if (colour.r + colour.g + colour.b + real_low*3 > 3.0) {
+    //     colour.b = 0.5;
+    //     colour.g *=2;
+    // }
 
-    if (random(uv.xy / 4.) > 0.9999) {
-        colour = vec3(random(r), random(r), random(r));
+    // if (random(uv.xy) > 0.9999) {
+    //     colour = vec3(random(r), random(r), random(r));
+    // }
+
+    vec3 colour;
+    if (uv.y < 0.3) {
+        colour = texture(fractals, gl_FragCoord.xy).rgb;
+    } else if (uv.y >= 0.3 && uv.y < 0.6) {
+        colour = texture(scrolls, gl_FragCoord.xy).rgb;
+    } else if (uv.y >= 0.6) {
+        colour = texture(attractors, gl_FragCoord.xy).rgb;
     }
 
     out_color = vec4(colour, 1.);
