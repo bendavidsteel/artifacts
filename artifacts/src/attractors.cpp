@@ -57,12 +57,12 @@ void Attractors::update(float weirdFactor1, float weirdFactor2, int numPoints, i
     line2Buffer.copyTo(line2Buffer2);
 }
 
-void Attractors::draw(float cameraDist) {
+void Attractors::draw(float cameraDist, float cameraRotateSpeed) {
     float thisDist = dist;
     thisDist += (cameraDist - 0.5) * 2 * 0.1 * dist;
 
-    theta += 0.01;
-    phi += 0.005;
+    theta += 0.02 * cameraRotateSpeed;
+    phi += 0.01 * cameraRotateSpeed;
     if (theta > 2 * PI) theta -= 2 * PI;
     if (phi > 2 * PI) phi -= 2 * PI;
 

@@ -279,7 +279,7 @@ void main(){
 	colour += vec3(0., 0.5 * norm_speed, 1. * norm_speed);
 	// colour += vec3(0., 1. * audio, 0.5 * audio);
 	
-	float audioSensitivity = 1.;
+	float audioSensitivity = 4.;
 
 	p[gl_GlobalInvocationID.x].color.rgb = colour;
 	p[gl_GlobalInvocationID.x].color.a = 0.1 * pow(audio, audioSensitivity);

@@ -99,7 +99,10 @@ float simplex3d_fractal(vec3 m) {
 			+0.0666667*simplex3d(8.0*m);
 }
 
-    
+float map(float val, float a, float b, float c, float d) {
+	float norm = (val - a) / (b - a);
+	return c + norm * (d - c);
+}
 
 float getSpectrum(float cassini, float dist) {
     float scale = pow(pow(cassini, 1. / (1. * dist)), 1.5) / bass;
@@ -143,13 +146,17 @@ void main(){
         cassini *= mix(1., dot(pow(from_centre - pos, vec2(2.)), vec2(1.)), strength);
     }
 
+	float rawCam = texture(camera, gl_FragCoord.xy).r;
+	float normCam = (rawCam - 0.) / (0.8 - 0.);
+	float camera = normCam;
+
 	float audioShare = 0.;
 	float noiseShare = 0.;
 	float cameraShare = 1.;
 
     o += audioShare * getSpectrum(cassini, a);
     o += noiseShare * flow;
-	o += cameraShare * dot(texture(camera, gl_FragCoord.xy).rgb, vec3(0.333));
+	o += cameraShare * camera;
 
     out_color = vec4(o, o, o, 1.);
 }

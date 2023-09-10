@@ -9,7 +9,7 @@ uniform sampler2DRect last;
 
 uniform sampler2DRect mask;
 uniform sampler2DRect eye;
-uniform sampler2DRect artificer;
+uniform sampler2DRect camera;
 
 uniform sampler2DRect attractors;
 uniform sampler2DRect fractals;
@@ -18,6 +18,8 @@ uniform sampler2DRect scrolls;
 uniform float low;
 uniform float high;
 uniform float bps;
+uniform int isOnset;
+uniform int sortPixels;
 
 out vec4 out_color;
 
@@ -94,6 +96,33 @@ mat3 get_colour_rotation(int theta)
     else if (theta == 5)
     {
         return mat3(0.5, 0., 0.5, 0.5, 0.5, 0., 0., 0.5, 0.5);
+    }
+}
+
+vec3 pixelSorter() {
+    vec2 sortDir = vec2(0.5, 0.5);
+    vec3 lastColour = texture(last, gl_FragCoord.xy).rgb;
+    vec3 lastUpColour = texture(last, gl_FragCoord.xy + sortDir).rgb;
+    vec3 lastUp2Colour = texture(last, gl_FragCoord.xy + 2 * sortDir).rgb;
+    vec3 lastDownColour = texture(last, gl_FragCoord.xy - sortDir).rgb;
+    vec3 lastDown2Colour = texture(last, gl_FragCoord.xy - 2 * sortDir).rgb;
+
+    float lastBright = dot(lastColour, vec3(0.333));
+    float lastUpBright = dot(lastUpColour, vec3(0.333));
+    float lastUp2Bright = dot(lastUp2Colour, vec3(0.333));
+    float lastDownBright = dot(lastDownColour, vec3(0.333));
+    float lastDown2Bright = dot(lastDown2Colour, vec3(0.333));
+
+    if (lastUp2Bright > lastBright) {
+        return lastUp2Colour;
+    } else if (lastUpBright > lastBright) {
+        return lastUpColour;
+    } else if (lastDown2Bright < lastBright) {
+        return lastDown2Colour;
+    } else if (lastDownBright < lastBright) {
+        return lastDownColour;
+    } else {
+        return lastColour;
     }
 }
 
@@ -197,17 +226,6 @@ void main(){
     //     colour = eye_colour * 2 * length(colour);
     // }
 
-    // artificer
-    // vec4 artificer_colour = texture(artificer, coord).rgba;
-    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(0, 1)).rgba;
-    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(1, 0)).rgba;
-    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(0, -1)).rgba;
-    // artificer_colour += 0.2 * texture(artificer, coord + ivec2(-1, 0)).rgba;
-    // if (artificer_colour.a > 0.1) {
-    //     // colour = mix(colour, artificer_colour.rgb, 0.4);
-    //     colour *= artificer_colour.rgb;
-    // }
-
     // colour.r += 0.2 + 0.2 * cos(4 * time * bps);
     // float colour_b = 0;
 
@@ -231,6 +249,17 @@ void main(){
     } else if (uv.y >= 0.6) {
         colour = texture(attractors, gl_FragCoord.xy).rgb;
     }
+
+    // vec3 eyeColour = texture(eye, gl_FragCoord.xy).rgb;
+    // colour = mix(colour, eyeColour, 0.5);
+
+    if (sortPixels == 1) {
+        colour = pixelSorter();
+    }
+
+    coladour = vec3(1., 0., 0.);
+
+    // colour = texture(camera, gl_FragCoord.xy).rbb;
 
     out_color = vec4(colour, 1.);
 

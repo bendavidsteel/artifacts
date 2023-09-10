@@ -73,7 +73,7 @@ void ofApp::setup(){
 	pointsBuffer.allocate(pointsVector, GL_DYNAMIC_DRAW);
 	pointsBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 7);
 
-	ofSetFrameRate(60);
+	ofSetFrameRate(120);
 
 	attractors.setup();
 	fractals.setup();
@@ -127,9 +127,11 @@ void ofApp::setup(){
 	vidGrabber.setDeviceID(0);
 	int sourceWidth = ofGetWidth();
 	int sourceHeight = ofGetHeight();
-	vidGrabber.initGrabber(sourceWidth, sourceHeight);
+	vidGrabber.setUseTexture(true);
+	vidGrabber.setPixelFormat(OF_PIXELS_YUY2);
+	vidGrabber.setup(sourceWidth, sourceHeight);
 
-	vidTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
+	vidTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA8);
 }
 
 //--------------------------------------------------------------
@@ -139,8 +141,8 @@ void ofApp::update(){
 	bool bNewFrame = vidGrabber.isFrameNew();
 	
 	if (bNewFrame){
-		ofPixels & pixels = vidGrabber.getPixels();
-		vidTexture.loadData(pixels);
+		ofPixels & cameraPixels = vidGrabber.getPixels();
+		vidTexture.loadData(cameraPixels);
 	}
 
 	bool normalize = true;
@@ -179,19 +181,27 @@ void ofApp::draw(){
 	ofEnableBlendMode(OF_BLENDMODE_ADD);
 
 	vector<float> melBands = audioAnalyzer.getValues(MEL_BANDS, 0, lowSmoothing);
+	float bass = ofMap(melBands[0], DB_MIN, DB_MAX, 0., 1., true);
+	float treble = ofMap(melBands[melBands.size() - 1], DB_MIN, DB_MAX, 0., 1., true);
 	bool isOnset = audioAnalyzer.getOnsetValue(0);
+	int iIsOnset;
+	if (isOnset) {
+		iIsOnset = 1;
+	} else {
+		iIsOnset = 0;
+	}
 
 	float bpm = bpmDetector.getBPM();
 	float bps = bpm / 60.0;
 
 	fboFractals.begin();
 	ofClear(0, 0, 0, 0);
-	fractals.draw(audioVector.size(), pointsVector.size(), cameraRotateSpeed, cameraDist, weirdFactor1, weirdFactor2, melBands[0]);
+	fractals.draw(audioVector.size(), pointsVector.size(), cameraRotateSpeed, cameraDist, weirdFactor1, weirdFactor2, bass);
 	fboFractals.end();
 
 	fboAttractors.begin();
 	ofClear(0, 0, 0, 0);
-	attractors.draw(cameraDist);
+	attractors.draw(cameraDist, cameraRotateSpeed);
 	fboAttractors.end();
 
 	fboScrolls.begin();
@@ -215,11 +225,13 @@ void ofApp::draw(){
 	post_shader.setUniformTexture("attractors", fboAttractors.getTexture(), 2);
 	post_shader.setUniformTexture("scrolls", fboScrolls.getTexture(), 3);
 	post_shader.setUniformTexture("mask", maskImage.getTexture(), 4);
-	post_shader.setUniformTexture("artificer", artificerImage.getTexture(), 5);
+	post_shader.setUniformTexture("camera", vidTexture, 5);
 	post_shader.setUniformTexture("eye", eyeTexture, 6);
 	post_shader.setUniform1f("bps", bps);
-	post_shader.setUniform1f("low", melBands[0]);
-	post_shader.setUniform1f("high", melBands[melBands.size() - 1]);
+	post_shader.setUniform1f("bass", bass);
+	post_shader.setUniform1f("treble", treble);
+	post_shader.setUniform1i("sortPixels", iSortPixels);
+	post_shader.setUniform1i("isOnset", iIsOnset);
 	post_shader.setUniform1i("postType", postType);
 	post_shader.setUniform1f("postVar", postVar);
 	ofSetColor(255);
@@ -241,8 +253,26 @@ void ofApp::newMidiMessage(ofxMidiMessage& message) {
 		if (message.status == MIDI_NOTE_ON) {
 			// 48 - 72
 			int key = message.pitch - 48;
-			changeArtifactType(key);
-			
+
+			if (key <= 11) {
+				changeArtifactType(key);
+			}
+
+			if ((key > 11) && (key < 22)) {
+				postType = type - 12;
+			}
+
+			if (key == 23) {
+				iSortPixels = 1;
+			}
+
+			if (type == 24) {
+				bLoadPostShader = true;
+			}
+		} else if (message.status == MIDI_NOTE_OFF) {
+			if (key == 23) {
+				iSortPixels = 0;
+			}
 		} else if (message.status == MIDI_CONTROL_CHANGE) {
 			if (message.control == 32) {
 				// rms
@@ -267,37 +297,41 @@ void ofApp::audioIn(ofSoundBuffer & buffer){
 }
 
 void ofApp::keyPressed(int key) {
-	int num = key - '0';
-	changeArtifactType(num);
+	if (key >= '0' && key <= '9') {
+		int num = key - '0';
+		changeArtifactType(num);
+	} else if (key == 's') {
+		iSortPixels = 1;
+	} else if (key == ' ') {
+		reloadShaders();
+	}
+}
+
+void ofApp::keyReleased(int key) {
+	if (key == 's') {
+		iSortPixels = 0;
+	}
 }
 
 void ofApp::changeArtifactType(int type) {
-
-	if (type <= 11) {
-		artifactType = type;
-	}
-
 	if (artifactType < 4) {
-		int fractalType = artifactType;
+		int fractalType = type;
 		fractals.setFractalType(fractalType);
 	}
 	
 	if ((artifactType >= 4) && (artifactType <= 11)) {
-		int attractorType = artifactType - 4;
+		int attractorType = type - 4;
 		attractors.setAttractorType(attractorType);
-	}
-	
-	if ((artifactType > 11) && (artifactType < 23)) {
-		postType = type - 12;
-	}
-
-	if (type == 24) {
-		bLoadPostShader = true;
 	}
 }
 
 void ofApp::reloadShaders() {
-	post_shader.load("generic.vert", "post.frag");
+	ofShader testShader;
+	bool success = testShader.setupShaderFromFile(GL_FRAGMENT_SHADER, "shaders/post.frag");
+	if (success) {
+		post_shader.load("shaders/generic.vert", "shaders/post.frag");
+	}
+	
 	attractors.reloadShaders();
 	fractals.reloadShaders();
 }

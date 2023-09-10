@@ -16,7 +16,7 @@ void Fractals::draw(int numAudio, int numPoints, float cameraRotateSpeed, float 
     shader.setUniform1f("scale", 1.0);
     shader.setUniform1f("transform_1", weirdFactor1);
     shader.setUniform1f("transform_2", weirdFactor2);
-    shader.setUniform1f("ambient", bass);
+    shader.setUniform1f("bass", bass);
     shader.setUniform1f("camera_amp", cameraDist);
     shader.setUniform1f("camera_speed", cameraRotateSpeed);
     shader.setUniform1i("numAudio", numAudio);

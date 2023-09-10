@@ -18,7 +18,7 @@ uniform int fractal_type;
 uniform float scale;
 uniform float transform_1;
 uniform float transform_2;
-uniform float ambient;
+uniform float bass;
 uniform float camera_amp;
 uniform float camera_speed;
 uniform float audioSensitivity;
@@ -336,6 +336,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
   }
 
   float audioSensitivity = 6.;
+  float ambient = pow(bass, audioSensitivity);
   
   if (fractal_type <= SPONGE) {
     if (hit) {
@@ -349,7 +350,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
       col.rgb = vec3 (0.8 + (length (minDistToScenePos) / 8.0), 1.0, 0.8);
       col.rgb = hsv2rgb (col.rgb);
       col.rgb *= 1.0 / pow (minDistToScene, 1.0);
-      col.rgb /= 15.0 * map (ambient, -1.0, 1.0, 1.0, 10.0);
+      col.rgb /= 15.0 * map (1. - ambient, 0., 1., 1.0, 10.0);
     }
     col.rgb /= iterations / 10.0; // Ambeint occlusion
     col.rgb /= pow (distance (ro, minDistToScenePos), 2.0);
@@ -366,7 +367,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
       col.rgb = vec3 (0.8 + (length (minDistToScenePos) / 0.5), 1.0, 0.8);
       col.rgb = hsv2rgb (col.rgb);
       col.rgb *= 1.0 / (minDistToScene * minDistToScene);
-      col.rgb /= map (ambient, -1.0, 1.0, 3000.0, 50000.0);
+      col.rgb /= map(1. - ambient, 0., 1., 3000.0, 50000.0);
     }
 
     col.rgb /= steps * 0.08; // Ambeint occlusion
@@ -383,7 +384,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
 
     col.rgb /= steps * 0.08; // Ambeint occlusion
     col.rgb /= pow (distance (ro, minDistToScenePos), 2.0);
-    col.rgb *= 20.0;
+    col.rgb *= 100.0 * ambient;
   }
 
   return col;

@@ -18,6 +18,7 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		void draw();
 
 		void keyPressed(int key);
+		void keyReleased(int key);
 		void audioIn(ofSoundBuffer & buffer);
 		void newMidiMessage(ofxMidiMessage& eventArgs);
 
@@ -80,4 +81,6 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		// video and optical flow
 		ofVideoGrabber vidGrabber;
 		ofTexture vidTexture;
+
+		int iSortPixels;
 };
