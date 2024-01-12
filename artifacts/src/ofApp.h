@@ -5,10 +5,12 @@
 #include "ofxAudioAnalyzer.h"
 #include "ofxBPMDetector.h"
 #include "ofxMidi.h"
+#include "ofxNetwork.h"
 
 #include "attractors.h"
 #include "scrolls.h"
 #include "fractals.h"
+#include "temple.h"
 
 class ofApp : public ofBaseApp, public ofxMidiListener{
 
@@ -28,20 +30,22 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		Attractors attractors;
 		Scrolls scrolls;
 		Fractals fractals;
+		Temple temple;
 
 		bool bLoadPostShader;
-		ofShader post_shader;
 		ofImage maskImage;
 		ofImage artificerImage;
 		ofVideoPlayer eyePlayer;
 		ofTexture eyeTexture;
 
-		ofFbo fbo1, fbo2;
-		ofFbo last;
+		vector<ofFbo> fbos;
+		vector<ofFbo> lastFbos;
+		vector<ofShader> post_shaders;
 
 		ofFbo fboAttractors;
 		ofFbo fboScrolls;
 		ofFbo fboFractals;
+		ofFbo fboTemple;
 
 		int postType;
 		float postVar;
@@ -58,6 +62,7 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		ofxBPMDetector bpmDetector;
 		ofSoundStream soundStream;
 		ofxMidiIn midiIn;
+		ofxUDPManager udpConnection;
 
 		ofBufferObject audioBuffer;
 		ofBufferObject pointsBuffer;
@@ -74,6 +79,8 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		int bufferSize;
 		int channels;
 		float volume;
+		int beat;
+		float bpm;
 
 		float lowSmoothing;
 		float highSmoothing;
@@ -83,4 +90,5 @@ class ofApp : public ofBaseApp, public ofxMidiListener{
 		ofTexture vidTexture;
 
 		int iSortPixels;
+		int iNumScreens;
 };

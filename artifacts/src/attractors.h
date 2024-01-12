@@ -5,7 +5,7 @@
 class Attractors {
     public:
         void setup();
-        void update(float weirdFactor1, float weirdFactor2, int numPoints, int numAudio);
+        void update(float weirdFactor1, float weirdFactor2, int numPoints, int numAudio, float bass, float bpm, int beat);
         void draw(float cameraDist, float cameraRotateSpeed);
 
 		void setAttractorType(int attractorType);

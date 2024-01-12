@@ -367,7 +367,7 @@ vec4 RayMarcher (vec3 ro, vec3 rd) {
       col.rgb = vec3 (0.8 + (length (minDistToScenePos) / 0.5), 1.0, 0.8);
       col.rgb = hsv2rgb (col.rgb);
       col.rgb *= 1.0 / (minDistToScene * minDistToScene);
-      col.rgb /= map(1. - ambient, 0., 1., 3000.0, 50000.0);
+      col.rgb /= 40000.;//map(1. - ambient, 0., 1., 10000.0, 50000.0);
     }
 
     col.rgb /= steps * 0.08; // Ambeint occlusion

@@ -5,7 +5,10 @@
 uniform ivec2 resolution;
 uniform float time;
 
-uniform sampler2DRect last;
+uniform sampler2DRect last1;
+uniform sampler2DRect last2;
+uniform sampler2DRect last3;
+uniform sampler2DRect last4;
 
 uniform sampler2DRect mask;
 uniform sampler2DRect eye;
@@ -14,10 +17,12 @@ uniform sampler2DRect camera;
 uniform sampler2DRect attractors;
 uniform sampler2DRect fractals;
 uniform sampler2DRect scrolls;
+uniform sampler2DRect temple;
 
-uniform float low;
-uniform float high;
-uniform float bps;
+uniform float bass;
+uniform float treble;
+uniform float bpm;
+uniform int beat;
 uniform int isOnset;
 uniform int sortPixels;
 
@@ -101,41 +106,54 @@ mat3 get_colour_rotation(int theta)
 
 vec3 pixelSorter() {
     vec2 sortDir = vec2(0.5, 0.5);
-    vec3 lastColour = texture(last, gl_FragCoord.xy).rgb;
-    vec3 lastUpColour = texture(last, gl_FragCoord.xy + sortDir).rgb;
-    vec3 lastUp2Colour = texture(last, gl_FragCoord.xy + 2 * sortDir).rgb;
-    vec3 lastDownColour = texture(last, gl_FragCoord.xy - sortDir).rgb;
-    vec3 lastDown2Colour = texture(last, gl_FragCoord.xy - 2 * sortDir).rgb;
+    vec3 lastColour = texture(last1, gl_FragCoord.xy).rgb;
+    vec3 lastUpColour = texture(last1, gl_FragCoord.xy + sortDir).rgb;
+    vec3 lastDownColour = texture(last1, gl_FragCoord.xy - sortDir).rgb;
+
+    float maskCentre = texture(mask, gl_FragCoord.xy).a;
+    float maskUp = texture(mask, gl_FragCoord.xy + sortDir).a;
+    float maskDown = texture(mask, gl_FragCoord.xy - sortDir).a;
 
     float lastBright = dot(lastColour, vec3(0.333));
     float lastUpBright = dot(lastUpColour, vec3(0.333));
-    float lastUp2Bright = dot(lastUp2Colour, vec3(0.333));
     float lastDownBright = dot(lastDownColour, vec3(0.333));
-    float lastDown2Bright = dot(lastDown2Colour, vec3(0.333));
 
-    if (lastUp2Bright > lastBright) {
-        return lastUp2Colour;
-    } else if (lastUpBright > lastBright) {
+    if (maskUp > 0. && lastUpBright > lastBright) {
         return lastUpColour;
-    } else if (lastDown2Bright < lastBright) {
-        return lastDown2Colour;
-    } else if (lastDownBright < lastBright) {
+    } else if (maskDown > 0. && lastDownBright < lastBright) {
         return lastDownColour;
     } else {
         return lastColour;
     }
 }
 
+vec3 get_scrolls(vec2 coord) {
+    float bps = 3.;
+    vec2 uv = coord / resolution.xy;
+    float w = 10.;
+    uv += 0.05 * vec2(sin(w * uv.y + time * bps), cos(w * uv.x + time * bps));
+    coord = uv * resolution.xy;
+    vec3 colour = texture(scrolls, coord).rgb;
+    if (colour.r >= 0.5) {
+        colour = vec3(1., 0., 0.);
+    }
+    return colour;
+}
+
 void main(){
+    float bpm = 130;
+    float bps = bpm / 60;
+
+    float bass_boost = pow(bass, 3.);
+
     vec2 coord = gl_FragCoord.xy;
     vec2 uv = coord / vec2(resolution);
 
-    // vec2 centre = vec2(0.5, 0.5);
-    // vec2 from_centre = uv - centre;
-    // from_centre *= 0.2;
+    vec2 centre = vec2(0.5, 0.58);
+    vec2 from_centre = uv - centre;
 
-    // float theta = atan(from_centre.y, from_centre.x);
-    // float r = length(from_centre);
+    float theta = atan(from_centre.y, from_centre.x);
+    float r = length(from_centre);
     // float refl_theta = PI * 0.25;
     // if (theta > refl_theta) {
     //     theta = refl_theta;;
@@ -158,9 +176,7 @@ void main(){
     //     from_centre = from_centre * refl_mat(PI * 0.25);
     // }
 
-    // theta = atan(from_centre.y, from_centre.x);
-    // r = length(from_centre);
-    // r *= 1. + pow(low / 8., 3.);
+    // r *= 1. + pow(bass_boost, 3.);
 
     // // theta += 0.5 * random(r);
     // // r += 0.01 * random(theta);
@@ -241,28 +257,105 @@ void main(){
     //     colour = vec3(random(r), random(r), random(r));
     // }
 
-    vec3 colour;
-    if (uv.y < 0.3) {
-        colour = texture(fractals, gl_FragCoord.xy).rgb;
-    } else if (uv.y >= 0.3 && uv.y < 0.6) {
-        colour = texture(scrolls, gl_FragCoord.xy).rgb;
-    } else if (uv.y >= 0.6) {
-        colour = texture(attractors, gl_FragCoord.xy).rgb;
+    // r *= 1 - 0.2 * bass_boost;
+
+    // if (isOnset == 1) {
+    //     theta += 0.1 * (2. * random(time) - 1.);
+    // }
+
+    // from_centre = vec2(cos(theta), sin(theta)) * r;
+    // uv = centre + from_centre;
+    // coord = uv * resolution.xy;
+
+    // float pi = 3.141592;
+
+    // // float frac_a = 0.4 + 0.1 * sin(bps * time + uv.x) + 0.1 * bass_boost;
+    // // float frac_b = 0.5 + 0.1 * sin(bps * time + uv.x + 1) + 0.1 * bass_boost;
+    // float frac_rate = 10.;
+    // float wave_size = 2. * bass_boost;
+    // // float frac_a = -1 * pi * 0.3 + wave_size * sin(frac_rate * r + time * bps * bass_boost);
+    // // float frac_b = 1. * pi * 0.3 + wave_size * sin(frac_rate * r + time * bps * bass_boost);
+    // // float frac_o = -1. * pi + wave_size * sin(frac_rate * r + time * bps * bass_boost);
+    // // float frac_c = frac_o + 2 * pi;
+    // float frac_a = 0.4 + 0.2 * sin(bps * time + uv.x) + 0.1 * bass_boost;
+    // float frac_b = 0.5 + 0.2 * sin(bps * time + uv.x + 1) + 0.1 * bass_boost;
+    // float frac_o = 0.3 + 0.2 * sin(bps * time + uv.x + 2) + 0.1 * bass_boost;
+    // float frac_c = 0.6 + 0.2 * sin(bps * time + uv.x + 3) + 0.1 * bass_boost;
+
+    // int centrepiece = int(1 + (0.5 + 0.5 * sin(bps * time / 3)) * 3);
+    // float threshold = uv.y;
+
+    // vec3 colour;
+    // if (threshold >= frac_o && threshold < frac_a) {
+    //     if (centrepiece == 1) {
+    //         colour = texture(fractals, coord).rgb;
+    //     } else if (centrepiece == 2) {
+    //         colour = texture(attractors, coord).rgb;
+    //     } else if (centrepiece == 3) {
+    //         colour = get_scrolls(coord);
+    //     }
+        
+    // } else if (threshold >= frac_a && threshold < frac_b) {
+    //     if (centrepiece == 3) {
+    //         colour = texture(fractals, coord).rgb;
+    //     } else if (centrepiece == 1) {
+    //         colour = texture(attractors, coord).rgb;
+    //     } else if (centrepiece == 2) {
+    //         colour = get_scrolls(coord);
+    //     }
+    // } else if (threshold >= frac_b && threshold < frac_c) {
+    //     if (centrepiece == 2) {
+    //         colour = texture(fractals, coord).rgb;
+    //     } else if (centrepiece == 3) {
+    //         colour = texture(attractors, coord).rgb;
+    //     } else if (centrepiece == 1) {
+    //         colour = get_scrolls(coord);
+    //     }
+    // }
+
+    // vec3 eyeColour = texture(eye, coord).rgb;
+    // vec3 eyeMix = eyeColour.b * vec3(1., 0.2, 1.);
+    // if (bass > 0.5) {
+    //     colour *= 2. * eyeMix;
+    // }
+
+    // if (sortPixels == 1) {
+    //     colour = pixelSorter();
+    // }
+
+    // // colour = texture(camera, gl_FragCoord.xy).rbb;
+
+    // colour = get_colour_rotation(int(2 * time * bps)) * colour;
+
+    // float degs = theta * 180 / 3.14156;
+    // float thetaBlock = float(int(degs / 10. * random(time)));
+    // if (random(thetaBlock * time) < bass_boost) {
+    //     colour = 3. * colour;
+    // }
+
+    // out_color = vec4(colour, 1.);
+
+    // // APPLY MASK
+    // // out_color.a *= texture(mask, coord).a;
+    // float mask_alpha = texture(mask, coord).a;
+    // if (mask_alpha > 0.) {
+    //     out_color.rgb = 1 - out_color.rgb;
+    // }
+
+    // for (int i = -10; i < 10; i++) {
+    //     for (int j = -10; j < 10; j++) {
+    //         vec2 coord2 = coord + vec2(i, j);
+    //         float mask2 = texture(mask, coord2).a;
+    //         if (mask2 > 0.) {
+    //             vec3 last_colour = texture(last, coord2).rgb;
+    //             out_color.rgb += length(vec2(i, j)) * 0.001 * last_colour;
+    //         }
+    //     }
+    // }
+
+    if (beat == 1) {
+        out_color.rgb = texture(fractals, coord).rgb;
     }
-
-    // vec3 eyeColour = texture(eye, gl_FragCoord.xy).rgb;
-    // colour = mix(colour, eyeColour, 0.5);
-
-    if (sortPixels == 1) {
-        colour = pixelSorter();
-    }
-
-    coladour = vec3(1., 0., 0.);
-
-    // colour = texture(camera, gl_FragCoord.xy).rbb;
-
-    out_color = vec4(colour, 1.);
-
-    // APPLY MASK
-    // out_color.a *= texture(mask, coord).r;
+    out_color.rgb = texture(scrolls, coord).rgb;
+    out_color.a = 1.;
 }

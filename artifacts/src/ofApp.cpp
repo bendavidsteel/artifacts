@@ -31,7 +31,7 @@ void ofApp::setup(){
 	// auto devices = soundStream.getDeviceList(ofSoundDevice::Api::ALSA);
 	auto devices = soundStream.getDeviceList();
 	if(!devices.empty()){
-		settings.setInDevice(devices[0]);
+		settings.setInDevice(devices[1]);
 	}
 
 	// auto devices = soundStream.getDeviceList();
@@ -78,18 +78,23 @@ void ofApp::setup(){
 	attractors.setup();
 	fractals.setup();
 	scrolls.setup();
+	temple.setup();
 
 	fboAttractors.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
 	fboFractals.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
 	fboScrolls.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
+	fboTemple.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
 
-	// fractals
-	fbo1.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
-	fbo2.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
-	last.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
-
-	// post
-	post_shader.load("shaders/generic.vert", "shaders/post.frag");
+	fbos.resize(4);
+	lastFbos.resize(4);
+	post_shaders.resize(4);
+	for (int i = 0; i < 4; i++) {
+		fbos[i].allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
+		lastFbos[i].allocate(ofGetWidth(), ofGetHeight(), GL_RGBA16);
+		string shaderName = "shaders/post" + ofToString(i+1) + ".frag";
+		post_shaders[i].load("shaders/generic.vert", shaderName);
+	}
+	iNumScreens = 1;
 
 	artifactType = 0;
 
@@ -109,8 +114,14 @@ void ofApp::setup(){
 	// add ofApp as a listener
 	midiIn.addListener(this);
 
+	ofxUDPSettings udpSettings;
+	udpSettings.receiveOn(11999);
+	udpSettings.blocking = false;
+
+	udpConnection.Setup(udpSettings);
+
 	// load images
-	maskImage.load("assets/hyperportals_mask.png");
+	maskImage.load("assets/artificer2.png");
 	maskImage.resize(ofGetWidth(), ofGetHeight());
 
 	artificerImage.load("assets/artitficer-title.png");
@@ -128,10 +139,29 @@ void ofApp::setup(){
 	int sourceWidth = ofGetWidth();
 	int sourceHeight = ofGetHeight();
 	vidGrabber.setUseTexture(true);
-	vidGrabber.setPixelFormat(OF_PIXELS_YUY2);
+	// vidGrabber.setPixelFormat(OF_PIXELS_YUY2);
 	vidGrabber.setup(sourceWidth, sourceHeight);
 
 	vidTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA8);
+
+	// fileName = "testMovie";
+    // fileExt = ".mov"; // ffmpeg uses the extension to determine the container type. run 'ffmpeg -formats' to see supported formats
+
+    // override the default codecs if you like
+    // run 'ffmpeg -codecs' to find out what your implementation supports (or -formats on some older versions)
+    // vidRecorder.setVideoCodec("mpeg4");
+    // vidRecorder.setVideoBitrate("800k");
+    // vidRecorder.setAudioCodec("mp3");
+    // vidRecorder.setAudioBitrate("192k");
+
+    // ofAddListener(vidRecorder.outputFileCompleteEvent, this, &ofApp::recordingComplete);
+
+//    soundStream.listDevices();
+//    soundStream.setDeviceID(11);
+    soundStream.setup(this, 0, channels, sampleRate, 1024, 4);
+
+    ofSetWindowShape(vidGrabber.getWidth(), vidGrabber.getHeight()	);
+    ofEnableAlphaBlending();
 }
 
 //--------------------------------------------------------------
@@ -167,13 +197,37 @@ void ofApp::update(){
 	int numPoints = pointsVector.size();
 	int numAudio = audioVector.size();
 
-	attractors.update(weirdFactor1, weirdFactor2, numPoints, numAudio);
-	scrolls.update(vidTexture, numAudio, numPoints, bass);
+	attractors.update(weirdFactor1, weirdFactor2, numPoints, numAudio, bass, bpm, beat);
+	scrolls.update(vidTexture, numAudio, numPoints, bass, bpm, beat);
+	temple.update(bass, bpm, beat);
 
 	if (bLoadPostShader) {
 		reloadShaders();
 		bLoadPostShader = false;
 	}
+
+	// receive bpm data
+	// receive network data
+	char udpMessage[100000];
+	udpConnection.Receive(udpMessage,100000);
+	string allMessages = udpMessage;
+	if (allMessages != "") {
+		vector<string> messages = ofSplitString(allMessages,"\n");
+		// remove empty messages
+		for (int i = 0; i < messages.size(); i++) {
+			if (messages[i] == "") {
+				messages.erase(messages.begin() + i);
+			}
+		}
+		if (messages.size() > 0) {
+			string lastMessage = messages[messages.size() - 1];
+			vector<string> messageParts = ofSplitString(lastMessage, ";");
+			string beatString = messageParts[0];
+			string bpmString = messageParts[1];
+			beat = ofToInt(beatString);
+			bpm = ofToFloat(bpmString);
+		}
+	}	
 }
 
 //--------------------------------------------------------------
@@ -196,7 +250,7 @@ void ofApp::draw(){
 
 	fboFractals.begin();
 	ofClear(0, 0, 0, 0);
-	fractals.draw(audioVector.size(), pointsVector.size(), cameraRotateSpeed, cameraDist, weirdFactor1, weirdFactor2, bass);
+	fractals.draw(audioVector.size(), pointsVector.size(), cameraRotateSpeed, cameraDist, weirdFactor1, weirdFactor2, bass, bpm, beat);
 	fboFractals.end();
 
 	fboAttractors.begin();
@@ -209,41 +263,62 @@ void ofApp::draw(){
 	scrolls.draw();
 	fboScrolls.end();
 
+	fboTemple.begin();
+	ofClear(0, 0, 0, 0);
+	temple.draw();
+	fboTemple.end();
+
 	eyePlayer.update();
     if(eyePlayer.isFrameNew()){
         ofPixels & pixels = eyePlayer.getPixels();
         eyeTexture.loadData(pixels);
 	}
 
-	fbo2.begin();
-	ofClear(0, 0, 0, 0);
-	post_shader.begin();
-	post_shader.setUniform2i("resolution", ofGetWidth(), ofGetHeight());
-	post_shader.setUniform1f("time", ofGetElapsedTimef());
-	post_shader.setUniformTexture("last", last.getTexture(), 0);
-	post_shader.setUniformTexture("fractals", fboFractals.getTexture(), 1);
-	post_shader.setUniformTexture("attractors", fboAttractors.getTexture(), 2);
-	post_shader.setUniformTexture("scrolls", fboScrolls.getTexture(), 3);
-	post_shader.setUniformTexture("mask", maskImage.getTexture(), 4);
-	post_shader.setUniformTexture("camera", vidTexture, 5);
-	post_shader.setUniformTexture("eye", eyeTexture, 6);
-	post_shader.setUniform1f("bps", bps);
-	post_shader.setUniform1f("bass", bass);
-	post_shader.setUniform1f("treble", treble);
-	post_shader.setUniform1i("sortPixels", iSortPixels);
-	post_shader.setUniform1i("isOnset", iIsOnset);
-	post_shader.setUniform1i("postType", postType);
-	post_shader.setUniform1f("postVar", postVar);
-	ofSetColor(255);
-	ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
-	post_shader.end();
-	fbo2.end();
+	for (int i = 0; i < iNumScreens; i++) {
+		fbos[i].begin();
+		ofClear(0, 0, 0, 0);
+		post_shaders[i].begin();
+		post_shaders[i].setUniform2i("resolution", ofGetWidth(), ofGetHeight());
+		post_shaders[i].setUniform1f("time", ofGetElapsedTimef());
+		post_shaders[i].setUniformTexture("last1", lastFbos[0].getTexture(), 0);
+		post_shaders[i].setUniformTexture("last2", lastFbos[1].getTexture(), 1);
+		post_shaders[i].setUniformTexture("last3", lastFbos[2].getTexture(), 2);
+		post_shaders[i].setUniformTexture("last4", lastFbos[3].getTexture(), 3);
+		post_shaders[i].setUniformTexture("fractals", fboFractals.getTexture(), 4);
+		post_shaders[i].setUniformTexture("attractors", fboAttractors.getTexture(), 5);
+		post_shaders[i].setUniformTexture("scrolls", fboScrolls.getTexture(), 6);
+		post_shaders[i].setUniformTexture("temple", fboTemple.getTexture(), 7);
+		post_shaders[i].setUniformTexture("mask", maskImage.getTexture(), 8);
+		post_shaders[i].setUniformTexture("camera", vidTexture, 9);
+		post_shaders[i].setUniformTexture("eye", eyeTexture, 10);
+		post_shaders[i].setUniform1f("bpm", bpm);
+		post_shaders[i].setUniform1i("beat", beat);
+		post_shaders[i].setUniform1f("bass", bass);
+		post_shaders[i].setUniform1f("treble", treble);
+		post_shaders[i].setUniform1i("sortPixels", iSortPixels);
+		post_shaders[i].setUniform1i("isOnset", iIsOnset);
+		post_shaders[i].setUniform1i("postType", postType);
+		post_shaders[i].setUniform1f("postVar", postVar);
+		ofSetColor(255);
+		ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
+		post_shaders[i].end();
+		fbos[i].end();
 
-	last.begin();
-	ofClear(0, 0, 0, 0);
-	fbo2.draw(0, 0, ofGetWidth(), ofGetHeight());
-	last.end();
-	last.draw(0, 0, ofGetWidth(), ofGetHeight());
+		lastFbos[i].begin();
+		ofClear(0, 0, 0, 0);
+		fbos[i].draw(0, 0, ofGetWidth(), ofGetHeight());
+		lastFbos[i].end();
+	}
+
+	if (iNumScreens == 1) {
+		lastFbos[0].draw(0, 0, ofGetWidth(), ofGetHeight());
+	} else if (iNumScreens == 4) {
+		lastFbos[0].draw(0, 0, ofGetWidth() / 2, ofGetHeight() / 2);
+		lastFbos[1].draw(ofGetWidth() / 2, 0, ofGetWidth() / 2, ofGetHeight() / 2);
+		lastFbos[2].draw(0, ofGetHeight() / 2, ofGetWidth() / 2, ofGetHeight() / 2);
+		lastFbos[3].draw(ofGetWidth() / 2, ofGetHeight() / 2, ofGetWidth() / 2, ofGetHeight() / 2);
+	}
+	// fboTemple.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 
 //--------------------------------------------------------------
@@ -259,17 +334,30 @@ void ofApp::newMidiMessage(ofxMidiMessage& message) {
 			}
 
 			if ((key > 11) && (key < 22)) {
-				postType = type - 12;
+				postType = key - 12;
+			}
+
+			if (key == 22) {
+				if (iNumScreens == 4) {
+					iNumScreens = 1;
+				} else if (iNumScreens == 1) {
+					iNumScreens = 4;
+				}
 			}
 
 			if (key == 23) {
-				iSortPixels = 1;
+				if (iSortPixels == 0) {
+					iSortPixels = 1;
+				} else if (iSortPixels == 1) {
+					iSortPixels = 0;
+				}
 			}
 
-			if (type == 24) {
+			if (key == 24) {
 				bLoadPostShader = true;
 			}
 		} else if (message.status == MIDI_NOTE_OFF) {
+			int key = message.pitch - 48;
 			if (key == 23) {
 				iSortPixels = 0;
 			}
@@ -314,12 +402,12 @@ void ofApp::keyReleased(int key) {
 }
 
 void ofApp::changeArtifactType(int type) {
-	if (artifactType < 4) {
+	if (type < 4) {
 		int fractalType = type;
 		fractals.setFractalType(fractalType);
 	}
 	
-	if ((artifactType >= 4) && (artifactType <= 11)) {
+	if ((type >= 4) && (type <= 11)) {
 		int attractorType = type - 4;
 		attractors.setAttractorType(attractorType);
 	}
@@ -327,11 +415,15 @@ void ofApp::changeArtifactType(int type) {
 
 void ofApp::reloadShaders() {
 	ofShader testShader;
-	bool success = testShader.setupShaderFromFile(GL_FRAGMENT_SHADER, "shaders/post.frag");
-	if (success) {
-		post_shader.load("shaders/generic.vert", "shaders/post.frag");
+	for (int i = 0; i < 4; i++) {
+		string shaderName = "shaders/post" + ofToString(i+1) + ".frag";
+		bool success = testShader.setupShaderFromFile(GL_FRAGMENT_SHADER, shaderName);
+		if (success) {
+			post_shaders[i].load("shaders/generic.vert", shaderName);
+		}
 	}
 	
 	attractors.reloadShaders();
 	fractals.reloadShaders();
+	scrolls.reloadShaders();
 }

@@ -5,8 +5,9 @@
 class Scrolls {
     public:
         void setup();
-        void update(ofTexture vidTexture, int numAudio, int numPoints, float bass);
+        void update(ofTexture vidTexture, int numAudio, int numPoints, float bass, float bpm, int beat);
         void draw();
+        void reloadShaders();
 
     private:
         vector<string> textLines;

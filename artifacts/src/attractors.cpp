@@ -24,7 +24,7 @@ void Attractors::setup() {
 	camera.lookAt(glm::vec3(0., 0., 0.));
 }
 
-void Attractors::update(float weirdFactor1, float weirdFactor2, int numPoints, int numAudio) {
+void Attractors::update(float weirdFactor1, float weirdFactor2, int numPoints, int numAudio, float bass, float bpm, int beat) {
     if (bResetAttractors) {
         resetAttractors();
         bResetAttractors = false;
@@ -42,6 +42,9 @@ void Attractors::update(float weirdFactor1, float weirdFactor2, int numPoints, i
     compute.setUniform1f("dist", dist);
     compute.setUniform1f("weirdFactor1", weirdFactor1);
     compute.setUniform1f("weirdFactor2", weirdFactor2);
+	compute.setUniform1f("bass", bass);
+	compute.setUniform1f("bpm", bpm);
+	compute.setUniform1i("beat", beat);
 
     // since each work group has a local_size of 1024 (this is defined in the shader)
     // we only have to issue 1 / 1024 workgroups to cover the full workload.

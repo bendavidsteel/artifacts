@@ -147,12 +147,12 @@ void main(){
     }
 
 	float rawCam = texture(camera, gl_FragCoord.xy).r;
-	float normCam = (rawCam - 0.) / (0.8 - 0.);
+	float normCam = rawCam;//(rawCam - 0.) / (0.8 - 0.);
 	float camera = normCam;
 
 	float audioShare = 0.;
 	float noiseShare = 0.;
-	float cameraShare = 1.;
+	float cameraShare = 1.0;
 
     o += audioShare * getSpectrum(cassini, a);
     o += noiseShare * flow;

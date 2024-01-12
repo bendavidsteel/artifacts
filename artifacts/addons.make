@@ -1,3 +1,7 @@
 ofxAudioAnalyzer
 ofxBPMDetector
 ofxMidi
+ofxVideoRecorder
+ofxPoco
+ofxColorTheory
+ofxNetwork

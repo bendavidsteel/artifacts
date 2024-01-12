@@ -27,7 +27,7 @@ void Scrolls::setup() {
     pixels.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 }
 
-void Scrolls::update(ofTexture vidTexture, int numAudio, int numPoints, float bass) {
+void Scrolls::update(ofTexture vidTexture, int numAudio, int numPoints, float bass, float bpm, int beat) {
     float time = ofGetElapsedTimef();
 
     fboIntensity.begin();
@@ -38,6 +38,8 @@ void Scrolls::update(ofTexture vidTexture, int numAudio, int numPoints, float ba
     intensityShader.setUniform1i("numAudio", numAudio);
     intensityShader.setUniform1i("numPoints", numPoints);
     intensityShader.setUniform1f("bass", bass);
+    intensityShader.setUniform1f("bpm", bpm);
+    intensityShader.setUniform1i("beat", beat);
     intensityShader.setUniformTexture("camera", vidTexture, 0);
     ofSetColor(255);
 	ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
@@ -89,4 +91,8 @@ void Scrolls::draw() {
         string line = textLines[i];
         ofDrawBitmapString(line, 0, i * lineSep);
     }
+}
+
+void Scrolls::reloadShaders() {
+    intensityShader.load("shaders/scrolls/generic.vert", "shaders/scrolls/intensity.frag");
 }
